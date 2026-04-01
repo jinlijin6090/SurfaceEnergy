@@ -53,22 +53,127 @@ All steps run in a single Streamlit web app — no coding required after launch.
 
 ## Installation
 
-### Conda environment (recommended)
+The app requires **two separate conda environments**:
 
+| Environment | Purpose | fairchem version |
+|-------------|---------|-----------------|
+| `fairchem_UMA_NEW` | Runs the Streamlit app; UMA models (uma-s-1, uma-m-1p1, …) | ≥ 2.x |
+| `fairchem_old_OCP` | Optional subprocess backend for OCP checkpoints (GemNet-OC, EquiformerV2, eSCN) | 1.10.0 |
+
+You only need `fairchem_old_OCP` if you have local `.pt` checkpoint files trained with fairchem 1.x. The app spawns it automatically as a subprocess when selected in Tab ④.
+
+---
+
+### Prerequisites
+
+**System requirements:**
+- Linux or macOS (Windows via WSL2)
+- NVIDIA GPU with CUDA 11.8 or 12.4 (strongly recommended; CPU works but is very slow)
+- 32+ GB RAM, 100+ GB free disk space
+- Anaconda or Miniconda
+
+**Check CUDA version:**
 ```bash
-conda create -n surface_ui python=3.12
-conda activate surface_ui
-
-# Core scientific stack
-pip install streamlit plotly pymatgen mp-api ase pandas numpy
-
-# fairchem 2.x (UMA models)
-pip install fairchem-core
+nvidia-smi        # shows driver + CUDA version
+nvcc --version    # shows toolkit version
 ```
 
-> **Note:** If you also use a local OCP checkpoint (GemNet-OC etc.) that requires fairchem 1.x / `OCPCalculator`, create a **separate** conda environment (e.g. `fairchem_old_OCP`) and enter its path in Tab ④. The app spawns a subprocess automatically.
+---
 
-### Clone
+### Environment 1 — `fairchem_UMA_NEW` (required)
+
+This environment runs the Streamlit app and all UMA-based relaxations.
+
+```bash
+# Create and activate
+conda create -n fairchem_UMA_NEW python=3.12
+conda activate fairchem_UMA_NEW
+
+# Install fairchem 2.x (pulls in PyTorch + PyG automatically)
+pip install fairchem-core
+
+# App dependencies
+pip install streamlit plotly pymatgen mp-api ase pandas numpy
+```
+
+**Verify:**
+```bash
+python -c "
+import torch, fairchem, ase, streamlit
+print(f'PyTorch:        {torch.__version__}')
+print(f'CUDA available: {torch.cuda.is_available()}')
+print(f'fairchem:       {fairchem.__version__}')
+print(f'ASE:            {ase.__version__}')
+print(f'Streamlit:      {streamlit.__version__}')
+print('OK')
+"
+```
+
+---
+
+### Environment 2 — `fairchem_old_OCP` (optional)
+
+Only needed if you want to use a local GemNet-OC / EquiformerV2 / eSCN checkpoint file.
+
+#### Step 1 — Create environment
+
+```bash
+conda create -n fairchem_old_OCP python=3.12
+conda activate fairchem_old_OCP
+```
+
+#### Step 2 — Install PyTorch Geometric dependencies
+
+PyG packages must match your exact PyTorch + CUDA version. Download the pre-built wheels from https://data.pyg.org/whl/.
+
+**Example for PyTorch 2.4.0 + CUDA 12.4:**
+```bash
+mkdir -p ~/pyg_wheels && cd ~/pyg_wheels
+
+# Download (adjust torch/CUDA version in the URL if needed)
+wget https://data.pyg.org/whl/torch-2.4.0%2Bcu124/torch_cluster-1.6.3%2Bpt24cu124-cp312-cp312-linux_x86_64.whl
+wget https://data.pyg.org/whl/torch-2.4.0%2Bcu124/torch_scatter-2.1.2%2Bpt24cu124-cp312-cp312-linux_x86_64.whl
+wget https://data.pyg.org/whl/torch-2.4.0%2Bcu124/torch_sparse-0.6.18%2Bpt24cu124-cp312-cp312-linux_x86_64.whl
+wget https://data.pyg.org/whl/torch-2.4.0%2Bcu124/torch_spline_conv-1.2.2%2Bpt24cu124-cp312-cp312-linux_x86_64.whl
+
+pip install torch_cluster-*.whl torch_scatter-*.whl torch_sparse-*.whl torch_spline_conv-*.whl
+cd ~ && rm -rf ~/pyg_wheels
+```
+
+> For CUDA 11.8, replace `cu124` with `cu118` and `torch-2.4.0%2Bcu124` with `torch-2.4.0%2Bcu118` throughout.
+
+#### Step 3 — Install fairchem 1.10.0
+
+```bash
+pip install fairchem-core==1.10.0
+pip install ase pandas numpy
+```
+
+#### Step 4 — Fix numpy version (if using numba/GemNet-OC)
+
+GemNet-OC uses numba which requires numpy ≤ 2.3:
+```bash
+conda install "numpy<2.3"
+```
+
+**Verify:**
+```bash
+python -c "
+import torch, torch_geometric, fairchem, ase
+print(f'PyTorch:        {torch.__version__}')
+print(f'CUDA available: {torch.cuda.is_available()}')
+if torch.cuda.is_available():
+    print(f'GPU:            {torch.cuda.get_device_name(0)}')
+print(f'PyG:            {torch_geometric.__version__}')
+print(f'fairchem:       {fairchem.__version__}')
+print(f'ASE:            {ase.__version__}')
+print('OK')
+"
+```
+
+---
+
+### Clone the repository
 
 ```bash
 git clone https://github.com/jinlijin6090/SurfaceEnergy.git
