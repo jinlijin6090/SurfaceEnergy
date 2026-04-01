@@ -1,0 +1,8 @@
+streamlit>=1.35
+plotly>=5.22
+pymatgen>=2024.6
+mp-api>=0.41
+ase>=3.23
+fairchem-core>=2.0
+pandas>=2.0
+numpy>=1.24
